@@ -10,7 +10,6 @@ let articles = [];
 let lastFetchTime = null;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
-// Function to scrape The Verge articles with improved selectors
 async function scrapeVergeArticles() {
     try {
         console.log('Fetching articles from The Verge...');
@@ -237,66 +236,6 @@ async function scrapeVergeRSS() {
     }
 }
 
-// Try multiple RSS feeds
-async function scrapeMultipleRSSFeeds() {
-    const rssFeeds = [
-        'https://www.theverge.com/rss/index.xml',
-        'https://www.theverge.com/rss/front-page',
-        'https://feeds.feedburner.com/TheVerge'
-    ];
-    
-    const allArticles = [];
-    
-    for (const feedUrl of rssFeeds) {
-        try {
-            console.log(`Trying RSS feed: ${feedUrl}`);
-            const response = await axios.get(feedUrl, {
-                timeout: 15000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; RSS Reader/1.0)'
-                }
-            });
-            
-            const $ = load(response.data, { xmlMode: true });
-            
-            $('item').each((index, element) => {
-                const $element = $(element);
-                const title = $element.find('title').text().trim();
-                const link = $element.find('link').text().trim();
-                const pubDate = $element.find('pubDate').text().trim();
-                
-                if (title && link) {
-                    const publishDate = new Date(pubDate);
-                    
-                    if (publishDate >= new Date('2022-01-01')) {
-                        allArticles.push({
-                            title,
-                            url: link,
-                            publishDate,
-                            source: `The Verge (RSS: ${feedUrl.split('/').pop()})`
-                        });
-                    }
-                }
-            });
-            
-            console.log(`Found ${allArticles.length} articles so far from this feed`);
-            
-        } catch (error) {
-            console.log(`RSS feed ${feedUrl} failed: ${error.message}`);
-        }
-    }
-    
-    // Remove duplicates and sort
-    const uniqueArticles = allArticles.filter((article, index, self) => 
-        index === self.findIndex(a => a.url === article.url)
-    );
-    
-    uniqueArticles.sort((a, b) => new Date(b.publishDate) - new Date(a.publishDate));
-    
-    console.log(`Total unique articles from all RSS feeds: ${uniqueArticles.length}`);
-    return uniqueArticles;
-}
-
 // Function to get articles with caching and multiple fallbacks
 async function getArticles() {
     const now = Date.now();
@@ -310,7 +249,7 @@ async function getArticles() {
         // If main scraping gives us very few results, try RSS feeds
         if (articles.length < 10) {
             console.log(`Main scraping only found ${articles.length} articles, trying RSS feeds...`);
-            const rssArticles = await scrapeMultipleRSSFeeds();
+            const rssArticles = await scrapeVergeRSS();
             
             // Combine and deduplicate
             const combined = [...articles, ...rssArticles];
